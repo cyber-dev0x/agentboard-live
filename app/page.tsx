@@ -1,65 +1,225 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  Agent,
+  ProjectCard,
+  ActivityEvent,
+  AgentStatus,
+  CardStatus,
+  AGENTS,
+  INITIAL_CARDS,
+  INITIAL_EVENTS,
+  AUTO_EVENTS,
+} from '@/lib/data';
+import { Sidebar } from '@/components/Sidebar';
+import { StatusBar } from '@/components/StatusBar';
+import { Header } from '@/components/Header';
+import { KanbanBoard } from '@/components/KanbanBoard';
+import { DetailPanel } from '@/components/DetailPanel';
+import { ActivityFeed } from '@/components/ActivityFeed';
+import { AgentsView } from '@/components/AgentsView';
+import { ActivityView } from '@/components/ActivityView';
+
+const CARD_TRANSITIONS: Record<CardStatus, CardStatus | null> = {
+  ideas: 'in-progress',
+  'in-progress': 'review',
+  review: 'shipped',
+  shipped: null,
+};
+
+let eventCounter = 100;
+function nextId() {
+  return `evt_${++eventCounter}_${Date.now()}`;
+}
 
 export default function Home() {
+  const [agents, setAgents] = useState<Agent[]>(AGENTS);
+  const [cards, setCards] = useState<ProjectCard[]>(INITIAL_CARDS);
+  const [events, setEvents] = useState<ActivityEvent[]>(INITIAL_EVENTS);
+  const [selectedCard, setSelectedCard] = useState<ProjectCard | null>(null);
+  const [activeView, setActiveView] = useState<string>('board');
+  const tickRef = useRef(0);
+
+  const pushEvent = useCallback((text: string, type: ActivityEvent['type']) => {
+    setEvents(prev => [
+      { id: nextId(), text, timestamp: Date.now(), type },
+      ...prev.slice(0, 49),
+    ]);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      tickRef.current += 1;
+      const tick = tickRef.current;
+
+      // Rotate an agent status every ~8s
+      if (tick % 8 === 0) {
+        setAgents(prev => {
+          const idx = Math.floor(Math.random() * prev.length);
+          const weighted: AgentStatus[] = ['building', 'building', 'building', 'thinking', 'thinking', 'reviewing', 'shipping', 'idle'];
+          const newStatus = weighted[Math.floor(Math.random() * weighted.length)];
+          if (newStatus === prev[idx].status) return prev;
+          return prev.map((a, i) =>
+            i === idx
+              ? { ...a, status: newStatus, idleFor: newStatus === 'idle' ? Math.floor(Math.random() * 60) + 5 : undefined }
+              : a
+          );
+        });
+      }
+
+      // Bump progress on in-progress cards every ~12s
+      if (tick % 12 === 0) {
+        setCards(prev => {
+          const active = prev.filter(c => c.status === 'in-progress' && c.progress < 95);
+          if (active.length === 0) return prev;
+          const card = active[Math.floor(Math.random() * active.length)];
+          const bump = Math.floor(Math.random() * 8) + 2;
+          return prev.map(c =>
+            c.id === card.id
+              ? { ...c, progress: Math.min(c.progress + bump, 100), updatedAt: Date.now() }
+              : c
+          );
+        });
+      }
+
+      // Push random event every ~20s
+      if (tick % 20 === 0) {
+        const tpl = AUTO_EVENTS[Math.floor(Math.random() * AUTO_EVENTS.length)];
+        pushEvent(tpl.text, tpl.type);
+      }
+
+      // Move a card forward every ~35s
+      if (tick % 35 === 0) {
+        setCards(prev => {
+          const moveable = prev.filter(c => CARD_TRANSITIONS[c.status] !== null && c.progress >= 50);
+          if (moveable.length === 0) return prev;
+          const card = moveable[Math.floor(Math.random() * moveable.length)];
+          const next = CARD_TRANSITIONS[card.status]!;
+          const agent = AGENTS.find(a => a.id === card.assignedAgentId);
+          const label = next === 'in-progress' ? 'In Progress' : next.charAt(0).toUpperCase() + next.slice(1);
+          pushEvent(`${agent?.name || 'Agent'} moved ${card.name} to ${label}`, 'move');
+          return prev.map(c =>
+            c.id === card.id
+              ? {
+                  ...c,
+                  status: next,
+                  isLive: next === 'in-progress',
+                  updatedAt: Date.now(),
+                  deployStatus:
+                    next === 'shipped' ? 'deployed' : next === 'review' ? 'queued' : c.deployStatus,
+                }
+              : c
+          );
+        });
+      }
+
+      // Refresh a card's comment every ~50s
+      if (tick % 50 === 0) {
+        const comments = [
+          'Running final checks.',
+          'Deploy queued. Waiting on infra slot.',
+          'Fixed edge case. Rebasing now.',
+          'Review complete. Approved.',
+          'Pricing test running.',
+          'Copy updated. Ready.',
+          'Blocked — waiting on domain config.',
+          'Customer signal detected. Adjusting.',
+          'Build clean. Proceeding.',
+          'Merge conflict resolved.',
+        ];
+        setCards(prev => {
+          if (prev.length === 0) return prev;
+          const idx = Math.floor(Math.random() * prev.length);
+          const text = comments[Math.floor(Math.random() * comments.length)];
+          return prev.map((c, i) =>
+            i === idx
+              ? {
+                  ...c,
+                  latestComment: { id: nextId(), agentId: c.assignedAgentId, text, timestamp: Date.now() },
+                  updatedAt: Date.now(),
+                }
+              : c
+          );
+        });
+      }
+
+      // Log a decision every ~65s
+      if (tick % 65 === 0) {
+        pushEvent('Smith logged a strategic decision', 'decision');
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [pushEvent]);
+
+  const activeBuilds = cards.filter(c => c.status === 'in-progress').length;
+  const launchInProgress = cards.some(c => c.deployStatus === 'queued' || c.deployStatus === 'deploying');
+  const decisionsToday = events.filter(e => e.type === 'decision').length + 12;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        overflow: 'hidden',
+        background: 'var(--bg)',
+      }}
+    >
+      <StatusBar
+        agents={agents}
+        events={events}
+        activeBuilds={activeBuilds}
+        launchInProgress={launchInProgress}
+        decisionsToday={decisionsToday}
+      />
+
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <Sidebar
+          agents={agents}
+          activeView={activeView}
+          onViewChange={view => {
+            setActiveView(view);
+            setSelectedCard(null);
+          }}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Header agents={agents} activeBuilds={activeBuilds} />
+
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              {activeView === 'board' && (
+                <KanbanBoard
+                  cards={cards}
+                  agents={agents}
+                  onCardClick={card => setSelectedCard(card)}
+                />
+              )}
+              {activeView === 'agents' && (
+                <AgentsView agents={agents} cards={cards} />
+              )}
+              {activeView === 'activity' && (
+                <ActivityView events={events} />
+              )}
+            </div>
+
+            {selectedCard && activeView === 'board' && (
+              <DetailPanel
+                key={selectedCard.id}
+                card={cards.find(c => c.id === selectedCard.id) || selectedCard}
+                agents={agents}
+                onClose={() => setSelectedCard(null)}
+              />
+            )}
+
+            {activeView === 'board' && !selectedCard && (
+              <ActivityFeed events={events} />
+            )}
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -1,26 +1,108 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f5f5f4;
+  --surface: #ffffff;
+  --surface-2: #fafaf9;
+  --border: #e7e5e4;
+  --border-subtle: #f0efee;
+  --text-primary: #1c1917;
+  --text-secondary: #78716c;
+  --text-muted: #a8a29e;
+  --accent: #0ea5e9;
+  --accent-subtle: #e0f2fe;
+  --green: #22c55e;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --purple: #a855f7;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.15; }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+@keyframes fade-in-up {
+  from { transform: translateY(6px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes slide-panel {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes card-live {
+  0%, 100% { box-shadow: 0 0 0 1px #e7e5e4, 0 1px 3px rgba(0,0,0,0.05); }
+  50% { box-shadow: 0 0 0 1px rgba(14,165,233,0.35), 0 2px 12px rgba(14,165,233,0.08); }
+}
+@keyframes progress-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.blink { animation: blink 1.4s ease-in-out infinite; }
+
+.live-card {
+  animation: card-live 3.5s ease-in-out infinite;
+}
+
+.fade-in-up {
+  animation: fade-in-up 0.28s ease forwards;
+}
+
+.slide-panel {
+  animation: slide-panel 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.ticker-wrap { overflow: hidden; position: relative; }
+.ticker-inner {
+  display: flex;
+  animation: ticker 32s linear infinite;
+  white-space: nowrap;
+}
+
+.progress-shimmer {
+  background: linear-gradient(90deg, #0ea5e9 0%, #38bdf8 40%, #0ea5e9 60%, #0284c7 100%);
+  background-size: 200% 100%;
+  animation: progress-shimmer 2s linear infinite;
+}
+
+.mono {
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+}
+
+.card-hover {
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+.card-hover:hover {
+  box-shadow: 0 0 0 1px #0ea5e9, 0 4px 16px rgba(14,165,233,0.1);
+  transform: translateY(-1px);
+}
+
+.sidebar-item-active {
+  background: white;
+  box-shadow: 0 0 0 1px var(--border), 0 1px 3px rgba(0,0,0,0.04);
 }

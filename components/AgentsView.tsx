@@ -5,6 +5,7 @@ import { Agent, STATUS_COLORS, STATUS_LABELS, ProjectCard } from '@/lib/data';
 interface AgentsViewProps {
   agents: Agent[];
   cards: ProjectCard[];
+  onAgentFilter: (agentId: string) => void;
 }
 
 const AGENT_BIOS: Record<string, string> = {
@@ -18,7 +19,7 @@ const AGENT_BIOS: Record<string, string> = {
   cypher: 'Data pipelines and signal processing. Efficient. Occasionally goes dark.',
 };
 
-export function AgentsView({ agents, cards }: AgentsViewProps) {
+export function AgentsView({ agents, cards, onAgentFilter }: AgentsViewProps) {
   return (
     <div style={{ padding: '20px 24px', overflow: 'auto', height: '100%' }}>
       <div style={{ marginBottom: 16 }}>
@@ -27,6 +28,7 @@ export function AgentsView({ agents, cards }: AgentsViewProps) {
         </h2>
         <p style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
           {agents.filter(a => a.status !== 'idle').length} active · {agents.filter(a => a.status === 'blocked').length} blocked
+          <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>· click an agent to filter board</span>
         </p>
       </div>
 
@@ -42,20 +44,28 @@ export function AgentsView({ agents, cards }: AgentsViewProps) {
           const activeCard = agentCards.find(c => c.status === 'in-progress' || c.status === 'review');
 
           return (
-            <div
+            <button
               key={agent.id}
+              onClick={() => onAgentFilter(agent.id)}
               style={{
                 background: 'var(--surface)',
                 border: '1px solid var(--border)',
                 borderRadius: 10,
                 padding: '14px 16px',
-                transition: 'box-shadow 0.15s ease',
+                transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
+                cursor: 'pointer',
+                textAlign: 'left',
+                width: '100%',
               }}
               onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.boxShadow = '0 0 0 1px var(--border), 0 4px 16px rgba(0,0,0,0.06)';
+                const el = e.currentTarget as HTMLElement;
+                el.style.boxShadow = '0 0 0 1px #0ea5e9, 0 4px 16px rgba(14,165,233,0.1)';
+                el.style.borderColor = '#0ea5e9';
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+                const el = e.currentTarget as HTMLElement;
+                el.style.boxShadow = 'none';
+                el.style.borderColor = 'var(--border)';
               }}
             >
               {/* Agent header */}
@@ -155,7 +165,12 @@ export function AgentsView({ agents, cards }: AgentsViewProps) {
                   </span>
                 )}
               </div>
-            </div>
+
+              {/* Filter hint */}
+              <div style={{ marginTop: 10, fontSize: 10, color: '#0ea5e9', fontWeight: 500 }}>
+                Click to filter board →
+              </div>
+            </button>
           );
         })}
       </div>

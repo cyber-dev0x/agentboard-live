@@ -93,7 +93,7 @@ export function StatusBar({
         }}
       >
         <span className="mono" style={{ fontSize: 10, color: '#57534e' }}>
-          Corp. OS v0.4.1
+          Ops OS v0.4.1
         </span>
       </div>
     </div>

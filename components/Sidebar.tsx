@@ -74,13 +74,13 @@ export function Sidebar({ agents, activeView, onViewChange }: SidebarProps) {
               justifyContent: 'center',
             }}
           >
-            <span style={{ color: '#f5f5f4', fontSize: 11, fontWeight: 700 }}>AB</span>
+            <span style={{ color: '#f5f5f4', fontSize: 11, fontWeight: 700 }}>AO</span>
           </div>
           <div>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>
-              AgentBoard
+              AgentOps
             </div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.2 }}>Corp. OS v0.4</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.2 }}>Ops OS v0.4</div>
           </div>
         </div>
       </div>

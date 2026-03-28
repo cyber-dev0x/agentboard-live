@@ -1,15 +1,18 @@
 'use client';
 
-import { Agent } from '@/lib/data';
+import { Agent, AGENTS } from '@/lib/data';
 
 interface HeaderProps {
   agents: Agent[];
   activeBuilds: number;
+  agentFilter?: string | null;
+  onClearFilter?: () => void;
 }
 
-export function Header({ agents, activeBuilds }: HeaderProps) {
+export function Header({ agents, activeBuilds, agentFilter, onClearFilter }: HeaderProps) {
   const onlineCount = agents.filter(a => a.status !== 'idle').length;
   const blocked = agents.filter(a => a.status === 'blocked').length;
+  const filteredAgent = agentFilter ? AGENTS.find(a => a.id === agentFilter) : null;
 
   return (
     <div
@@ -24,7 +27,7 @@ export function Header({ agents, activeBuilds }: HeaderProps) {
       <div className="flex items-start justify-between">
         <div>
           <div className="mono" style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.08em', marginBottom: 4 }}>
-            ┌─ AGENTBOARD LIVE ──────────────────────────────────────
+            ┌─ AGENTOPS LIVE ──────────────────────────────────────
           </div>
           <div className="flex items-baseline gap-3">
             <h1
@@ -37,13 +40,13 @@ export function Header({ agents, activeBuilds }: HeaderProps) {
                 lineHeight: 1,
               }}
             >
-              AgentBoard
+              AgentOps
             </h1>
             <span
               className="mono"
               style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.06em' }}
             >
-              CORP. OS
+              OPS OS
             </span>
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
@@ -52,7 +55,38 @@ export function Header({ agents, activeBuilds }: HeaderProps) {
         </div>
 
         {/* Quick stats */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap justify-end">
+          {filteredAgent && (
+            <div
+              className="flex items-center gap-2"
+              style={{
+                background: '#e0f2fe',
+                border: '1px solid #bae6fd',
+                borderRadius: 6,
+                padding: '5px 10px',
+              }}
+            >
+              <span style={{ fontSize: 11, color: '#0369a1', fontWeight: 500 }}>
+                Filtered: {filteredAgent.name}
+              </span>
+              <button
+                onClick={onClearFilter}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  color: '#0369a1',
+                  padding: 0,
+                  lineHeight: 1,
+                  fontWeight: 600,
+                }}
+                title="Clear filter"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           <Stat label="agents active" value={onlineCount} color="#22c55e" live />
           <Stat label="builds" value={activeBuilds} color="#0ea5e9" />
           {blocked > 0 && <Stat label="blocked" value={blocked} color="#ef4444" />}

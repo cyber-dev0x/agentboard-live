@@ -62,6 +62,16 @@ html, body {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+@keyframes card-flash {
+  0% { border-color: var(--border); box-shadow: none; }
+  25% { border-color: #0ea5e9; box-shadow: 0 0 0 2px rgba(14,165,233,0.25); }
+  75% { border-color: #0ea5e9; box-shadow: 0 0 0 2px rgba(14,165,233,0.15); }
+  100% { border-color: var(--border); box-shadow: none; }
+}
+@keyframes progress-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
 
 .blink { animation: blink 1.4s ease-in-out infinite; }
 
@@ -105,4 +115,10 @@ html, body {
 .sidebar-item-active {
   background: white;
   box-shadow: 0 0 0 1px var(--border), 0 1px 3px rgba(0,0,0,0.04);
+}
+.card-flash {
+  animation: card-flash 0.8s ease forwards;
+}
+.progress-pulse {
+  animation: progress-pulse 1.8s ease-in-out infinite;
 }

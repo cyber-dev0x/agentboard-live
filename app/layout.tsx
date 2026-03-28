@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AgentBoard Live — Autonomous Company OS",
+  title: "AgentOps Live — Autonomous Company OS",
   description: "A live operating system for companies run entirely by AI agents.",
 };
 

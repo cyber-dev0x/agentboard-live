@@ -1,6 +1,7 @@
 'use client';
 
-import { ProjectCard, Agent, formatTimeSince, STATUS_COLORS } from '@/lib/data';
+import { useEffect, useRef, useState } from 'react';
+import { ProjectCard, Agent, STATUS_COLORS } from '@/lib/data';
 
 interface KanbanCardProps {
   card: ProjectCard;
@@ -39,13 +40,28 @@ const TAG_TEXT: Record<string, string> = {
 export function KanbanCard({ card, agent, onClick }: KanbanCardProps) {
   const isActive = card.isLive;
   const isBlocked = !!card.blockedReason;
-  const agentColor = agent ? STATUS_COLORS[agent.status] : '#a8a29e';
   const secondsSince = Math.floor((Date.now() - card.updatedAt) / 1000);
+
+  const prevProgressRef = useRef(card.progress);
+  const prevCommentRef = useRef(card.latestComment.id);
+  const [flashing, setFlashing] = useState(false);
+
+  useEffect(() => {
+    const progressChanged = card.progress !== prevProgressRef.current;
+    const commentChanged = card.latestComment.id !== prevCommentRef.current;
+    if (progressChanged || commentChanged) {
+      prevProgressRef.current = card.progress;
+      prevCommentRef.current = card.latestComment.id;
+      setFlashing(true);
+      const t = setTimeout(() => setFlashing(false), 900);
+      return () => clearTimeout(t);
+    }
+  }, [card.progress, card.latestComment.id]);
 
   return (
     <div
       onClick={onClick}
-      className={`cursor-pointer rounded-lg ${isActive ? 'live-card' : ''} card-hover`}
+      className={`cursor-pointer rounded-lg ${isActive ? 'live-card' : ''} card-hover ${flashing ? 'card-flash' : ''}`}
       style={{
         background: 'var(--surface)',
         border: `1px solid ${isBlocked ? '#fca5a5' : 'var(--border)'}`,
@@ -140,7 +156,7 @@ export function KanbanCard({ card, agent, onClick }: KanbanCardProps) {
           }}
         >
           <div
-            className={isActive ? 'progress-shimmer' : ''}
+            className={isActive ? 'progress-shimmer' : card.status === 'in-progress' ? 'progress-pulse' : ''}
             style={{
               height: '100%',
               width: `${card.progress}%`,

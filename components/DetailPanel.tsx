@@ -1,14 +1,16 @@
 'use client';
 
-import { ProjectCard, Agent, AGENTS, formatTimeSince, STATUS_COLORS } from '@/lib/data';
+import { ProjectCard, Agent, AGENTS, formatTimeSince, STATUS_COLORS, CardStatus } from '@/lib/data';
 
 interface DetailPanelProps {
   card: ProjectCard;
   agents: Agent[];
   onClose: () => void;
+  onToggleChecklistItem: (cardId: string, itemId: string) => void;
+  onMoveToNextStage: (cardId: string) => void;
 }
 
-const STATUS_LABELS: Record<string, string> = {
+const DEPLOY_STATUS_LABELS: Record<string, string> = {
   none: 'Not deployed',
   queued: 'Deploy queued',
   deploying: 'Deploying...',
@@ -16,12 +18,19 @@ const STATUS_LABELS: Record<string, string> = {
   failed: 'Deploy failed',
 };
 
-const STATUS_COLORS_DEPLOY: Record<string, string> = {
+const DEPLOY_STATUS_COLORS: Record<string, string> = {
   none: '#a8a29e',
   queued: '#f59e0b',
   deploying: '#0ea5e9',
   deployed: '#22c55e',
   failed: '#ef4444',
+};
+
+const NEXT_STAGE_LABELS: Record<CardStatus, string | null> = {
+  ideas: 'Move to In Progress',
+  'in-progress': 'Move to Review',
+  review: 'Ship it',
+  shipped: null,
 };
 
 const THREAD_COMMENTS = [
@@ -32,11 +41,12 @@ const THREAD_COMMENTS = [
   { agentId: 'neo', text: 'UI pass complete. Waiting on final copy.', offset: 3600 },
 ];
 
-export function DetailPanel({ card, agents, onClose }: DetailPanelProps) {
+export function DetailPanel({ card, agents, onClose, onToggleChecklistItem, onMoveToNextStage }: DetailPanelProps) {
   const assignedAgent = agents.find(a => a.id === card.assignedAgentId);
 
   const completedChecks = card.checklist.filter(c => c.done).length;
   const totalChecks = card.checklist.length;
+  const nextStageLabel = NEXT_STAGE_LABELS[card.status];
 
   return (
     <div
@@ -112,6 +122,36 @@ export function DetailPanel({ card, agents, onClose }: DetailPanelProps) {
       {/* Scrollable body */}
       <div style={{ flex: 1, overflow: 'auto', padding: '14px 16px' }}>
 
+        {/* Move to next stage */}
+        {nextStageLabel && (
+          <div style={{ marginBottom: 18 }}>
+            <button
+              onClick={() => onMoveToNextStage(card.id)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                background: card.status === 'review' ? '#dcfce7' : '#f0f9ff',
+                border: `1px solid ${card.status === 'review' ? '#bbf7d0' : '#bae6fd'}`,
+                borderRadius: 7,
+                fontSize: 12,
+                fontWeight: 600,
+                color: card.status === 'review' ? '#15803d' : '#0369a1',
+                cursor: 'pointer',
+                textAlign: 'center',
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background = card.status === 'review' ? '#bbf7d0' : '#bae6fd';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.background = card.status === 'review' ? '#dcfce7' : '#f0f9ff';
+              }}
+            >
+              {nextStageLabel} →
+            </button>
+          </div>
+        )}
+
         {/* Assigned agent */}
         <Section title="Assigned to">
           {assignedAgent ? (
@@ -162,13 +202,13 @@ export function DetailPanel({ card, agents, onClose }: DetailPanelProps) {
               style={{
                 width: 8,
                 height: 8,
-                background: STATUS_COLORS_DEPLOY[card.deployStatus],
+                background: DEPLOY_STATUS_COLORS[card.deployStatus],
                 display: 'inline-block',
                 flexShrink: 0,
               }}
             />
             <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>
-              {STATUS_LABELS[card.deployStatus]}
+              {DEPLOY_STATUS_LABELS[card.deployStatus]}
             </span>
           </div>
         </Section>
@@ -216,12 +256,28 @@ export function DetailPanel({ card, agents, onClose }: DetailPanelProps) {
           </Section>
         )}
 
-        {/* Checklist */}
+        {/* Checklist — toggleable */}
         {card.checklist.length > 0 && (
           <Section title={`Checklist — ${completedChecks}/${totalChecks}`}>
             <div className="flex flex-col gap-1.5">
               {card.checklist.map(item => (
-                <div key={item.id} className="flex items-center gap-2">
+                <button
+                  key={item.id}
+                  onClick={() => onToggleChecklistItem(card.id, item.id)}
+                  className="flex items-center gap-2"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '2px 0',
+                    textAlign: 'left',
+                    width: '100%',
+                    borderRadius: 4,
+                    transition: 'background 0.12s',
+                  }}
+                  onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = 'var(--surface-2)')}
+                  onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = 'transparent')}
+                >
                   <div
                     style={{
                       width: 14,
@@ -233,6 +289,7 @@ export function DetailPanel({ card, agents, onClose }: DetailPanelProps) {
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0,
+                      transition: 'background 0.15s',
                     }}
                   >
                     {item.done && (
@@ -250,7 +307,7 @@ export function DetailPanel({ card, agents, onClose }: DetailPanelProps) {
                   >
                     {item.text}
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           </Section>

@@ -39,6 +39,7 @@ export default function Home() {
   const [events, setEvents] = useState<ActivityEvent[]>(INITIAL_EVENTS);
   const [selectedCard, setSelectedCard] = useState<ProjectCard | null>(null);
   const [activeView, setActiveView] = useState<string>('board');
+  const [agentFilter, setAgentFilter] = useState<string | null>(null);
   const tickRef = useRef(0);
 
   const pushEvent = useCallback((text: string, type: ActivityEvent['type']) => {
@@ -48,12 +49,92 @@ export default function Home() {
     ]);
   }, []);
 
+  // Add a new card to ideas
+  const handleNewCard = useCallback((card: ProjectCard) => {
+    setCards(prev => [card, ...prev]);
+    const agent = AGENTS.find(a => a.id === card.assignedAgentId);
+    pushEvent(`${agent?.name || 'Agent'} queued ${card.name} for scoping`, 'assign');
+  }, [pushEvent]);
+
+  // Run Agent: pick a random idle/thinking agent, set to building, push event
+  const handleRunAgent = useCallback(() => {
+    setAgents(prev => {
+      const candidates = prev.filter(a => a.status === 'idle' || a.status === 'thinking');
+      if (candidates.length === 0) {
+        // bump a random one to building anyway
+        const idx = Math.floor(Math.random() * prev.length);
+        const a = prev[idx];
+        pushEvent(`${a.name} activated — now building`, 'build');
+        return prev.map((ag, i) => i === idx ? { ...ag, status: 'building', idleFor: undefined } : ag);
+      }
+      const target = candidates[Math.floor(Math.random() * candidates.length)];
+      pushEvent(`${target.name} activated — now building`, 'build');
+      return prev.map(ag => ag.id === target.id ? { ...ag, status: 'building', idleFor: undefined } : ag);
+    });
+  }, [pushEvent]);
+
+  // Toggle checklist item
+  const handleToggleChecklistItem = useCallback((cardId: string, itemId: string) => {
+    setCards(prev =>
+      prev.map(c =>
+        c.id === cardId
+          ? {
+              ...c,
+              checklist: c.checklist.map(item =>
+                item.id === itemId ? { ...item, done: !item.done } : item
+              ),
+              updatedAt: Date.now(),
+            }
+          : c
+      )
+    );
+    // keep selected card in sync
+    setSelectedCard(prev => {
+      if (!prev || prev.id !== cardId) return prev;
+      return null; // will re-select via the cards lookup in render
+    });
+  }, []);
+
+  // Move card to next stage
+  const handleMoveToNextStage = useCallback((cardId: string) => {
+    setCards(prev => {
+      const card = prev.find(c => c.id === cardId);
+      if (!card) return prev;
+      const next = CARD_TRANSITIONS[card.status];
+      if (!next) return prev;
+      const agent = AGENTS.find(a => a.id === card.assignedAgentId);
+      const label = next === 'in-progress' ? 'In Progress' : next.charAt(0).toUpperCase() + next.slice(1);
+      pushEvent(`${agent?.name || 'Agent'} moved ${card.name} to ${label}`, 'move');
+      return prev.map(c =>
+        c.id === cardId
+          ? {
+              ...c,
+              status: next,
+              isLive: next === 'in-progress',
+              updatedAt: Date.now(),
+              deployStatus:
+                next === 'shipped' ? 'deployed' : next === 'review' ? 'queued' : c.deployStatus,
+            }
+          : c
+      );
+    });
+  }, [pushEvent]);
+
+  // Agent filter from AgentsView — switch to board
+  const handleAgentFilter = useCallback((agentId: string) => {
+    setAgentFilter(agentId);
+    setActiveView('board');
+    setSelectedCard(null);
+  }, []);
+
+  const clearAgentFilter = useCallback(() => setAgentFilter(null), []);
+
   useEffect(() => {
     const interval = setInterval(() => {
       tickRef.current += 1;
       const tick = tickRef.current;
 
-      // Rotate an agent status every ~8s
+      // Rotate agent status every ~8s
       if (tick % 8 === 0) {
         setAgents(prev => {
           const idx = Math.floor(Math.random() * prev.length);
@@ -66,6 +147,17 @@ export default function Home() {
               : a
           );
         });
+      }
+
+      // Increment idle counter every 6s
+      if (tick % 6 === 0) {
+        setAgents(prev =>
+          prev.map(a =>
+            a.status === 'idle' && a.idleFor !== undefined
+              ? { ...a, idleFor: a.idleFor + 6 }
+              : a
+          )
+        );
       }
 
       // Bump progress on in-progress cards every ~12s
@@ -114,8 +206,8 @@ export default function Home() {
         });
       }
 
-      // Refresh a card's comment every ~50s
-      if (tick % 50 === 0) {
+      // Refresh a card comment every ~15s (was 50s)
+      if (tick % 15 === 0) {
         const comments = [
           'Running final checks.',
           'Deploy queued. Waiting on infra slot.',
@@ -127,6 +219,8 @@ export default function Home() {
           'Customer signal detected. Adjusting.',
           'Build clean. Proceeding.',
           'Merge conflict resolved.',
+          'Tests passing. Submitting for review.',
+          'Refactoring data layer. ETA 5m.',
         ];
         setCards(prev => {
           if (prev.length === 0) return prev;
@@ -186,7 +280,12 @@ export default function Home() {
         />
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <Header agents={agents} activeBuilds={activeBuilds} />
+          <Header
+            agents={agents}
+            activeBuilds={activeBuilds}
+            agentFilter={agentFilter}
+            onClearFilter={clearAgentFilter}
+          />
 
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
             <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -195,10 +294,18 @@ export default function Home() {
                   cards={cards}
                   agents={agents}
                   onCardClick={card => setSelectedCard(card)}
+                  onNewCard={handleNewCard}
+                  onRunAgent={handleRunAgent}
+                  agentFilter={agentFilter}
+                  systemLogEvents={events}
                 />
               )}
               {activeView === 'agents' && (
-                <AgentsView agents={agents} cards={cards} />
+                <AgentsView
+                  agents={agents}
+                  cards={cards}
+                  onAgentFilter={handleAgentFilter}
+                />
               )}
               {activeView === 'activity' && (
                 <ActivityView events={events} />
@@ -211,6 +318,8 @@ export default function Home() {
                 card={cards.find(c => c.id === selectedCard.id) || selectedCard}
                 agents={agents}
                 onClose={() => setSelectedCard(null)}
+                onToggleChecklistItem={handleToggleChecklistItem}
+                onMoveToNextStage={handleMoveToNextStage}
               />
             )}
 

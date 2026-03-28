@@ -90,6 +90,7 @@ export function Header({ agents, activeBuilds, agentFilter, onClearFilter }: Hea
           <Stat label="agents active" value={onlineCount} color="#22c55e" live />
           <Stat label="builds" value={activeBuilds} color="#0ea5e9" />
           {blocked > 0 && <Stat label="blocked" value={blocked} color="#ef4444" />}
+          <TwitterLink />
           <GithubLink />
         </div>
       </div>
@@ -127,6 +128,45 @@ function Stat({
       <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{value}</span>
       <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{label}</span>
     </div>
+  );
+}
+
+function TwitterLink() {
+  return (
+    <a
+      href="https://x.com/AgentOps0x"
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '5px 10px',
+        background: '#000',
+        border: '1px solid #333',
+        borderRadius: 6,
+        fontSize: 11,
+        fontWeight: 500,
+        color: '#fff',
+        textDecoration: 'none',
+        transition: 'background 0.15s, border-color 0.15s',
+      }}
+      onMouseEnter={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.background = '#111';
+        el.style.borderColor = '#555';
+      }}
+      onMouseLeave={e => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.background = '#000';
+        el.style.borderColor = '#333';
+      }}
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.26 5.632zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+      </svg>
+      @AgentOps0x
+    </a>
   );
 }
 

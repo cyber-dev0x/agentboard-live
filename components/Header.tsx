@@ -99,7 +99,7 @@ function Stat({
 function GithubLink() {
   return (
     <a
-      href="https://github.com/dmitriidiagilev/agentboard-live"
+      href="https://github.com/cyber-dev0x/agentboard-live"
       target="_blank"
       rel="noopener noreferrer"
       style={{
